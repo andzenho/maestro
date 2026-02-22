@@ -8,6 +8,13 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum HomeworkStatus {
+  PENDING
+  SUBMITTED
+  REVIEWED
+  REVISION
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -69,23 +76,45 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  group           Group?            @relation(fields: [groupId], references: [id])
+  group           Group?             @relation(fields: [groupId], references: [id])
   accounts        Account[]
   sessions        Session[]
   lessonProgress  LessonProgress[]
   eventAttendance EventAttendance[]
+  enrollments     CourseEnrollment[]
+  lessonComments  LessonComment[]
+  homework        Homework[]
+  notes           UserNote[]
+  certificates    Certificate[]
 }
 
 model Course {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   description String?
   coverUrl    String?
-  order       Int      @default(0)
-  isPublished Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  order       Int       @default(0)
+  isPublished Boolean   @default(false)
+  startsAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
   modules     Module[]
+  enrollments CourseEnrollment[]
+  events      Event[]
+  certificates Certificate[]
+}
+
+model CourseEnrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
 }
 
 model Module {
@@ -102,20 +131,25 @@ model Module {
 }
 
 model Lesson {
-  id          String   @id @default(cuid())
-  moduleId    String
-  title       String
-  description String?
-  videoUrl    String?
-  videoKey    String?
-  duration    Int?
-  order       Int      @default(0)
-  isPublished Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  moduleId           String
+  title              String
+  description        String?
+  videoUrl           String?
+  videoKey           String?
+  duration           Int?
+  order              Int       @default(0)
+  isPublished        Boolean   @default(false)
+  unlockAfterLessonId String?
+  unlockAtDate       DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  module   Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  progress LessonProgress[]
+  module     Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress   LessonProgress[]
+  materials  LessonMaterial[]
+  comments   LessonComment[]
+  homework   Homework[]
 }
 
 model LessonProgress {
@@ -135,16 +169,87 @@ model LessonProgress {
   @@unique([userId, lessonId])
 }
 
+model LessonMaterial {
+  id        String   @id @default(cuid())
+  lessonId  String
+  title     String
+  url       String
+  fileKey   String?
+  fileType  String?
+  fileSize  Int?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+model LessonComment {
+  id        String   @id @default(cuid())
+  lessonId  String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Homework {
+  id           String         @id @default(cuid())
+  lessonId     String
+  userId       String
+  text         String?
+  fileUrl      String?
+  fileKey      String?
+  status       HomeworkStatus @default(PENDING)
+  adminComment String?
+  reviewedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+}
+
+model UserNote {
+  id        String   @id @default(cuid())
+  userId    String
+  lessonId  String?
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Certificate {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  issuedAt  DateTime @default(now())
+  fileUrl   String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+}
+
 // type: WEBINAR | QA | WORKSHOP | DEADLINE
 model Event {
   id             String    @id @default(cuid())
   title          String
   description    String?
   type           String    @default("WEBINAR")
+  courseId       String?
   startsAt       DateTime
   endsAt         DateTime?
   meetingUrl     String?
   recordingUrl   String?
+  isPublished    Boolean   @default(true)
   notifyTelegram Boolean   @default(true)
   notified24h    Boolean   @default(false)
   notified1h     Boolean   @default(false)
@@ -152,6 +257,7 @@ model Event {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  course     Course?           @relation(fields: [courseId], references: [id])
   attendance EventAttendance[]
 }
 

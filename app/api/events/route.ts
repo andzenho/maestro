@@ -5,7 +5,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   const events = await prisma.event.findMany({
+    where: { isPublished: true },
     orderBy: { startsAt: "asc" },
+    include: { course: { select: { id: true, title: true } } },
   });
   return NextResponse.json(events);
 }
@@ -23,10 +25,12 @@ export async function POST(req: Request) {
       title: body.title,
       description: body.description,
       type: body.type,
+      courseId: body.courseId || null,
       startsAt: new Date(body.startsAt),
       endsAt: body.endsAt ? new Date(body.endsAt) : null,
       meetingUrl: body.meetingUrl || null,
       recordingUrl: body.recordingUrl || null,
+      isPublished: body.isPublished ?? true,
       notifyTelegram: body.notifyTelegram ?? true,
     },
   });

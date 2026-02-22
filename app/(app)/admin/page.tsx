@@ -2,17 +2,19 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Users, BookOpen, Calendar, Layers, ArrowRight } from "lucide-react";
+import { Users, BookOpen, Calendar, Layers, ArrowRight, ClipboardList, GraduationCap } from "lucide-react";
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
   if (session?.user?.role !== "ADMIN") return null;
 
-  const [userCount, courseCount, eventCount, groupCount] = await Promise.all([
+  const [userCount, courseCount, eventCount, groupCount, pendingHw, enrollCount] = await Promise.all([
     prisma.user.count(),
     prisma.course.count(),
     prisma.event.count(),
     prisma.group.count(),
+    prisma.homework.count({ where: { status: "SUBMITTED" } }),
+    prisma.courseEnrollment.count(),
   ]);
 
   const sections = [
@@ -48,6 +50,23 @@ export default async function AdminPage() {
       count: groupCount,
       unit: "групп",
     },
+    {
+      href: "/admin/homework",
+      label: "Домашние задания",
+      desc: "Проверка работ студентов",
+      icon: ClipboardList,
+      count: pendingHw,
+      unit: "на проверке",
+      highlight: pendingHw > 0,
+    },
+    {
+      href: "/admin/enrollments",
+      label: "Зачисления",
+      desc: "Доступ студентов к курсам",
+      icon: GraduationCap,
+      count: enrollCount,
+      unit: "зачислений",
+    },
   ];
 
   return (
@@ -69,7 +88,7 @@ export default async function AdminPage() {
           const Icon = s.icon;
           return (
             <Link key={s.href} href={s.href}>
-              <div className="glass-card rounded-2xl p-6 hover:border-[rgba(74,222,128,0.3)] transition-all duration-200 group cursor-pointer">
+              <div className={`glass-card rounded-2xl p-6 hover:border-[rgba(74,222,128,0.3)] transition-all duration-200 group cursor-pointer ${"highlight" in s && s.highlight ? "border-[rgba(74,222,128,0.2)]" : ""}`}>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-[rgba(74,222,128,0.1)] flex items-center justify-center">
@@ -86,7 +105,7 @@ export default async function AdminPage() {
                   />
                 </div>
                 <div className="mt-4 pt-4 border-t border-[rgba(74,222,128,0.08)]">
-                  <span className="text-2xl font-bold text-[#4ade80]">{s.count}</span>
+                  <span className={`text-2xl font-bold ${"highlight" in s && s.highlight ? "text-[#fbbf24]" : "text-[#4ade80]"}`}>{s.count}</span>
                   <span className="text-xs text-[#6b8f6b] ml-2">{s.unit}</span>
                 </div>
               </div>

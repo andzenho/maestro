@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, BookOpen, Calendar, BarChart3,
   User, LogOut, Settings, Layers, ChevronLeft, ChevronRight,
+  ClipboardList, Users,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,9 @@ const nav = [
 ];
 
 const adminNav = [
-  { href: "/admin", label: "Управление", icon: Settings },
+  { href: "/admin",             label: "Управление",  icon: Settings },
+  { href: "/admin/homework",    label: "Домашки",     icon: ClipboardList },
+  { href: "/admin/enrollments", label: "Зачисления",  icon: Users },
 ];
 
 export function Sidebar() {
@@ -126,7 +129,7 @@ export function Sidebar() {
               )}
             </div>
             {adminNav.map(({ href, label, icon: Icon }) => {
-              const active = pathname.startsWith(href);
+              const active = href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
               return (
                 <Link key={href} href={href}>
                   <motion.div

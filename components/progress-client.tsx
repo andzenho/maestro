@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CheckCircle2, BookOpen, BarChart3, Flame } from "lucide-react";
+import { CheckCircle2, BookOpen, BarChart3, Flame, Award } from "lucide-react";
 
 interface ModuleStat {
   id: string;
@@ -25,11 +25,20 @@ interface ActivityDay {
   count: number;
 }
 
+
+interface Certificate {
+  id: string;
+  issuedAt: string;
+  courseTitle: string;
+  courseId: string;
+}
+
 interface ProgressClientProps {
   totalLessons: number;
   completedLessons: number;
   courseStats: CourseStat[];
   activityDays: ActivityDay[];
+  certificates?: Certificate[];
 }
 
 export function ProgressClient({
@@ -37,6 +46,7 @@ export function ProgressClient({
   completedLessons,
   courseStats,
   activityDays,
+  certificates = [],
 }: ProgressClientProps) {
   const overallPercent =
     totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
@@ -288,6 +298,28 @@ export function ProgressClient({
           </div>
         </div>
       </motion.div>
+      {/* Certificates */}
+      {certificates.length > 0 && (
+        <motion.div variants={item} className="glass-card rounded-2xl p-6">
+          <h3 className="text-xs font-semibold text-[#a8c8a8] uppercase tracking-wider mb-4">
+            🏆 Сертификаты
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {certificates.map((cert) => (
+              <div key={cert.id}
+                className="flex items-center gap-3 p-4 rounded-xl border border-[rgba(251,191,36,0.2)] bg-[rgba(251,191,36,0.05)]">
+                <Award size={24} className="text-[#fbbf24] shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-[#e8f5e8]">{cert.courseTitle}</p>
+                  <p className="text-xs text-[#6b8f6b]">
+                    {new Date(cert.issuedAt).toLocaleDateString("ru-RU")}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

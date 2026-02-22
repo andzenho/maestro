@@ -28,6 +28,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
         },
       },
       progress: { where: { userId } },
+      materials: { orderBy: { order: "asc" } },
     },
   });
 
@@ -35,7 +36,6 @@ export default async function LessonPage({ params }: LessonPageProps) {
     notFound();
   }
 
-  // Get all lessons in course for navigation
   const allModules = await prisma.module.findMany({
     where: { courseId },
     include: {
@@ -64,6 +64,22 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
   const progress = lesson.progress[0];
 
+  const [comments, homework, note] = await Promise.all([
+    prisma.lessonComment.findMany({
+      where: { lessonId },
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.homework.findUnique({
+      where: { userId_lessonId: { userId, lessonId } },
+    }),
+    prisma.userNote.findFirst({
+      where: { userId, lessonId },
+    }),
+  ]);
+
   return (
     <VideoPlayer
       lesson={{
@@ -83,6 +99,22 @@ export default async function LessonPage({ params }: LessonPageProps) {
       allLessons={allLessons}
       prevLesson={prevLesson}
       nextLesson={nextLesson}
+      materials={lesson.materials}
+      initialHomework={homework ? {
+        id: homework.id,
+        text: homework.text,
+        fileUrl: homework.fileUrl,
+        status: homework.status,
+        adminComment: homework.adminComment,
+      } : null}
+      initialComments={comments.map((c) => ({
+        id: c.id,
+        text: c.text,
+        createdAt: c.createdAt.toISOString(),
+        user: c.user,
+      }))}
+      initialNote={note?.text || ""}
+      currentUserId={userId}
     />
   );
 }

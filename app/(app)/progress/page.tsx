@@ -9,13 +9,11 @@ export default async function ProgressPage() {
 
   const userId = session.user.id;
 
-  // Overall stats
   const totalLessons = await prisma.lesson.count({ where: { isPublished: true } });
   const completedLessons = await prisma.lessonProgress.count({
     where: { userId, isCompleted: true },
   });
 
-  // Course-level progress
   const courses = await prisma.course.findMany({
     where: { isPublished: true },
     include: {
@@ -45,7 +43,6 @@ export default async function ProgressPage() {
         percent: mLessons.length > 0 ? Math.round((mCompleted / mLessons.length) * 100) : 0,
       };
     });
-
     return {
       id: course.id,
       title: course.title,
@@ -56,27 +53,21 @@ export default async function ProgressPage() {
     };
   });
 
-  // Activity grid: last 52 weeks
   const since = new Date();
   since.setFullYear(since.getFullYear() - 1);
 
   const activityData = await prisma.lessonProgress.findMany({
-    where: {
-      userId,
-      lastWatchedAt: { gte: since },
-    },
+    where: { userId, lastWatchedAt: { gte: since } },
     select: { lastWatchedAt: true },
     orderBy: { lastWatchedAt: "asc" },
   });
 
-  // Group by day
   const activityMap: Record<string, number> = {};
   activityData.forEach((p) => {
     const day = p.lastWatchedAt.toISOString().split("T")[0];
     activityMap[day] = (activityMap[day] || 0) + 1;
   });
 
-  // Build grid for last 364 days
   const today = new Date();
   const days: { date: string; count: number }[] = [];
   for (let i = 363; i >= 0; i--) {
@@ -86,12 +77,24 @@ export default async function ProgressPage() {
     days.push({ date: dateStr, count: activityMap[dateStr] || 0 });
   }
 
+  const certificates = await prisma.certificate.findMany({
+    where: { userId },
+    include: { course: { select: { id: true, title: true } } },
+    orderBy: { issuedAt: "desc" },
+  });
+
   return (
     <ProgressClient
       totalLessons={totalLessons}
       completedLessons={completedLessons}
       courseStats={courseStats}
       activityDays={days}
+      certificates={certificates.map((c) => ({
+        id: c.id,
+        issuedAt: c.issuedAt.toISOString(),
+        courseTitle: c.course.title,
+        courseId: c.course.id,
+      }))}
     />
   );
 }
